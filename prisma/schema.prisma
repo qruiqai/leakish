@@ -1,0 +1,310 @@
+// Detect app schema. Independent from manager — separate logical database.
+// Connection: env DATABASE_URL (mysql://user:pass@host:3306/detect)
+
+generator client {
+  provider = "prisma-client-js"
+  // Output to a detect-scoped path so it never collides with manager's client.
+  output   = "../node_modules/.prisma/detect-client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------------------------------------------------------
+// NextAuth standard tables (https://authjs.dev/reference/adapter/prisma)
+// ----------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id            String      @id @default(cuid())
+  name          String?
+  email         String?     @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  /// Stripe customer id (`cus_…`). Created the first time the user starts a
+  /// Checkout session; reused for portal sessions and recurring billing.
+  stripeCustomerId String?   @unique
+
+  accounts      Account[]
+  sessions      Session[]
+  scans         DetectScan[]
+  apiKeys       ApiKey[]
+  subscription  Subscription?
+}
+
+// ----------------------------------------------------------------------------
+// Detect business tables
+// ----------------------------------------------------------------------------
+
+/// One full "Run All" execution that the user chose to save.
+model DetectScan {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  /// User-supplied label for this saved run, e.g. "Chrome 默认", "关了 WebRTC 的 Firefox".
+  /// Used in history listings and in uniqueness reports so the user can see
+  /// *which* of their own scans a fingerprint collision came from.
+  /// Nullable for backwards compatibility with rows saved before this field existed.
+  name      String?  @db.VarChar(80)
+
+  /// Aggregated assessment
+  score     Int
+  /// 'safe' | 'warning' | 'critical'
+  level     String
+
+  // ---- Server-observed network (from probeNetwork) --------------------------
+  // Raw IP stored verbatim — this is an internal-only tool, privacy is not a
+  // goal; cross-record IP correlation for drift / split-tunnel analytics is.
+  ipPublic      String?
+  ipFamily      String?  // 'ipv4' | 'ipv6'
+  ipCountry     String?
+  ipRegion      String?
+  ipCity        String?
+  ipAsn         String?
+  ipAsOrg       String?
+  ipHostname    String?
+  ipIsVpn       Boolean?
+  ipIsProxy     Boolean?
+  ipIsTor       Boolean?
+  ipIsHosting   Boolean?
+
+  // ---- TLS / HTTP headers (server-observed) ---------------------------------
+  tlsJa3          String?
+  tlsJa4          String?
+  serverUserAgent String? @db.Text
+  acceptLanguage  String?
+  acceptEncoding  String?
+
+  // ---- WebRTC module (client-observed) --------------------------------------
+  webrtcPublicIp     String?   // First public IP surfaced via STUN (empty if none)
+  webrtcLocalIpCount Int?      // Number of RFC1918 addresses leaked
+  webrtcIpv6Count    Int?      // Number of IPv6 candidates exposed
+  webrtcHasMdns      Boolean?  // Had any .local (mDNS-obfuscated) candidate
+  /// Split-tunnel indicator: true when WebRTC public IP != server-observed IP.
+  /// Precomputed at save time for cheap filtering.
+  webrtcIpMismatch   Boolean?
+
+  // ---- Browser fingerprint module (client-observed) -------------------------
+  clientUserAgent     String? @db.Text
+  platform            String?
+  language            String?   // primary
+  languageCount       Int?
+  timezoneName        String?
+  timezoneOffsetMin   Int?      // Minutes west of UTC (matches getTimezoneOffset)
+  screenWidth         Int?
+  screenHeight        Int?
+  screenColorDepth    Int?
+  hardwareConcurrency Int?
+  deviceMemoryGb      Int?
+  pluginCount         Int?
+  cookieEnabled       Boolean?
+  doNotTrack          String?
+  onlineStatus        Boolean?
+
+  // ---- Canvas / WebGL module ------------------------------------------------
+  webglVendor   String?
+  webglRenderer String? @db.Text
+
+  // ---- Font module ----------------------------------------------------------
+  fontTotalCount  Int?
+  fontUniqueCount Int?
+
+  // ---- DNS module -----------------------------------------------------------
+  dohSupport       Boolean?
+  dnssecSupport    Boolean?
+  resolverLocation String?
+
+  // ---- CDP / automation module ----------------------------------------------
+  cdpDetected    Boolean?
+  cdpConfidence  Float?
+  webdriverFlag  Boolean?
+  isChromium     Boolean?
+
+  // ---- Per-fingerprint hashes (uniqueness join key) -------------------------
+  uaHash         String?
+  canvas2dHash   String?
+  webglHash      String?
+  audioHash      String?
+  fontsetHash    String?
+
+  // ---- Tier 2: raw fingerprint payloads for offline analysis ----------------
+  // Kept nullable; each is ~30KB at worst (canvas/webgl data-URLs). With the
+  // 200-scans-per-user cap this bounds a user's blob data to ~20 MB.
+  rawUserAgent       String? @db.Text
+  rawCanvas2dDataUrl String? @db.MediumText
+  rawWebglDataUrl    String? @db.MediumText
+  rawAudioFp         String? @db.Text
+  rawFontListSorted  String? @db.MediumText
+
+  /// Full assessment payload for replay (RiskSignal[] + per-module summaries)
+  payload      Json
+
+  /// Optional client-supplied idempotency key. Two saves from the same user
+  /// with the same key resolve to the same row — safe for network retries.
+  /// Scoped per-user so separate users can reuse the same key. Null means
+  /// "no idempotency desired" (the default); the NULL column in a MySQL
+  /// composite unique index does not collide with other NULLs.
+  idempotencyKey String?
+
+  hashes       DetectFingerprintHash[]
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  // Cross-record analytics indexes — support the "same IP over time" and
+  // "browser fingerprint population" queries that the normalized schema is
+  // designed to enable. Keep it targeted; raw blob columns intentionally
+  // have no index (size + low cardinality per column).
+  @@index([ipPublic])
+  @@index([timezoneName])
+  @@index([webrtcIpMismatch])
+  @@index([cdpDetected])
+  @@unique([userId, idempotencyKey])
+}
+
+/// User-issued API key for programmatic access (CLI / CI / external tools).
+///
+/// Token shape: `det_<64 hex chars>`.
+/// We store ONLY the SHA-256 of the full token in `hash`; the plaintext is
+/// shown to the user exactly once at creation. Revocation is a soft delete
+/// (`revokedAt`) so we keep historical audit data.
+model ApiKey {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// User-supplied label, e.g. "macbook-cli", "ci-bot".
+  name        String
+
+  /// SHA-256 of the full plaintext token. Lookup key — must be unique.
+  hash        String    @unique
+  /// UI-friendly fragment, e.g. "det_a1b2...c3d4". Safe to display.
+  prefix      String
+
+  createdAt   DateTime  @default(now())
+  /// Updated atomically when the key is used to authenticate a request.
+  /// Eventually consistent — best-effort, not transactional.
+  lastUsedAt  DateTime?
+  /// Optional hard expiry. Null = never expires (until revoked).
+  expiresAt   DateTime?
+  /// Set when the user revokes the key. Looked up before allowing the request.
+  revokedAt   DateTime?
+
+  @@index([userId, createdAt])
+  /// Covers the active-key cap check (count where userId + revokedAt null)
+  /// and the list sort (orderBy revokedAt asc-nulls-first, createdAt desc).
+  @@index([userId, revokedAt])
+}
+
+/// Active or recent Stripe subscription bound to a user.
+///
+/// At most one row per user (`userId @unique`). When a subscription is fully
+/// `customer.subscription.deleted` we delete the row, returning the user to Free.
+/// Statuses kept around for non-active paid states (`past_due`, `unpaid`,
+/// `incomplete`) so the entitlement check can decide whether to keep granting
+/// paid access during retries. See `lib/billing/entitlement.ts`.
+model Subscription {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  stripeCustomerId      String
+  stripeSubscriptionId  String   @unique
+  stripePriceId         String
+
+  /// Cached plan id (`'starter' | 'pro'`) derived from `stripePriceId` so we
+  /// can answer entitlement questions without re-fetching from Stripe.
+  plan                  String
+  /// Cached interval (`'month' | 'year'`).
+  interval              String
+  /// Mirrors the Stripe subscription `status` literal (`active`, `trialing`,
+  /// `past_due`, `canceled`, `incomplete`, `unpaid`, …).
+  status                String
+  cancelAtPeriodEnd     Boolean  @default(false)
+
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+
+  /// Successful saves consumed in the current billing period.
+  /// Reset to 0 only when `currentPeriodStart` actually advances (see webhook).
+  usageScansThisPeriod  Int      @default(0)
+
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([stripeCustomerId])
+}
+
+/// Idempotency table for Stripe webhook events. Inserting first inside a
+/// transaction means duplicate deliveries collapse to a unique-constraint
+/// violation we can swallow as a 200 OK. Stripe retries on non-2xx, so this
+/// keeps us safe from repeated effects (double-counted period resets, etc.).
+model StripeEvent {
+  id          String   @id
+  type        String
+  receivedAt  DateTime @default(now())
+}
+
+/// Lookup table for fingerprint uniqueness queries.
+/// One row per (kind, hash) per scan. (kind, hash) repeated across scans is fine
+/// — counting rows by (kind, hash) gives "how many scans share this hash".
+model DetectFingerprintHash {
+  id        String   @id @default(cuid())
+  scanId    String
+  scan      DetectScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  /// 'ua' | 'canvas2d' | 'webgl' | 'audio' | 'fontset'
+  kind      String
+  hash      String
+  createdAt DateTime @default(now())
+
+  @@index([kind, hash])
+  @@index([scanId])
+  /// One row per (scanId, kind): a retry of the save endpoint must not
+  /// double-count a fingerprint kind for the same scan, which would inflate
+  /// uniqueness counts in /api/detect/uniqueness.
+  @@unique([scanId, kind])
+}

@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: leakish-detect
+    component: web
+  name: leakish-web
+  namespace: leakish-dev
+spec:
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 3000
+  selector:
+    app: leakish-detect
+    component: web
+  type: ClusterIP

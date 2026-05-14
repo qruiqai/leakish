@@ -1,0 +1,14 @@
+node_modules
+.next
+.turbo
+.git
+.github
+.vscode
+.idea
+coverage
+*.tsbuildinfo
+.env
+.env.*.local
+Dockerfile
+.dockerignore
+README.md
