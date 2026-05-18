@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses 4-digit semver `MAJOR.MINOR.PATCH.MICRO`.
 
+## [Unreleased]
+
+### Removed
+
+- **All paywall / billing / subscription logic.** This open-source build has no paid tier and no `402 Payment Required` path. Removed: Stripe SDK and integration, the `/pricing` and `/account/billing` pages, the entire `/api/billing/*` route tree (`checkout`, `portal`, `webhook`, `me`, `change-plan`), the `lib/billing/*` module set (`plans`, `entitlement`, `sync`, `change-plan`, `reconcile`, `app-url`), the `consumeScanQuota` / `refundScanQuota` / `pruneOldScansFor` flow on `POST /api/detect/scans`, the `Subscription` and `StripeEvent` Prisma models, the `User.stripeCustomerId` column, every `STRIPE_*` and `NEXT_PUBLIC_APP_URL` env var, the `reconcile-subscriptions` script + k8s `CronJob` manifest + its CI deploy steps, the `UsageMeter` component on `/scans`, the "Billing & plan" entry in the user menu, the `Pricing` nav link / pricing teaser / `landing.faq.cost` / footer `legalPricing` references, and the `tsx` runtime dep that only existed to run the reconcile script. Saves are now governed solely by the in-process `saveScanLimiter` (10/hour); history retention is unbounded. Existing dev databases need a one-time `yarn db:push:force` (`--accept-data-loss`) to drop the dropped tables/columns.
+
 ## [0.2.0.2] - 2026-05-12
 
 ### Fixed

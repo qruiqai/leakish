@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { signOut, useSession } from 'next-auth/react';
-import { CreditCard, History, KeyRound, Loader2, LogOut, User as UserIcon } from 'lucide-react';
+import { History, KeyRound, Loader2, LogOut, User as UserIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -86,13 +86,6 @@ export function UserMenu() {
             onNavigate={() => setOpen(false)}
           >
             {m.userMenu.integrations}
-          </MenuLink>
-          <MenuLink
-            href="/account/billing"
-            icon={<CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />}
-            onNavigate={() => setOpen(false)}
-          >
-            {m.userMenu.billing}
           </MenuLink>
 
           <div className="my-1 h-px bg-border/60" aria-hidden="true" />

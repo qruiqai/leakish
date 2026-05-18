@@ -95,13 +95,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Source needed by the `reconcile-subscriptions` CronJob. The script is run via
-# `tsx` at execution time — Next.js doesn't trace these files, so we ship them
-# explicitly. The footprint is small (< 200 KB).
-COPY --from=builder --chown=nextjs:nodejs /app/lib ./lib
-COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
-COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
-
 USER nextjs
 
 EXPOSE 3000

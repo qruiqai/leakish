@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { withDetectAuth } from '@/lib/api/auth';
 import { SaveScanRequestSchema } from '@/lib/api/scan-payload';
-import { consumeScanQuota, refundScanQuota } from '@/lib/billing/entitlement';
 import { logger } from '@/lib/logger';
 import prisma from '@/lib/prisma';
 import { sha256 } from '@/lib/server/hash';
@@ -73,29 +72,6 @@ export async function POST(req: NextRequest) {
     }
 
     const { assessment, fingerprints, moduleSnapshot, name } = parsed.data;
-
-    // Billing quota. Atomic for paid users (reserves a slot); read-only for
-    // free users. On reject the client gets the upgrade URL plus reset time.
-    // Deliberately ordered AFTER body parse + Zod validation: a paid user
-    // sending malformed JSON or an invalid payload must not burn a slot.
-    // Rate-limit stays in front because abusive bad-payload spam should still
-    // be throttled.
-    const quota = await consumeScanQuota(user.id);
-    if (!quota.ok) {
-      return NextResponse.json(
-        {
-          error: 'quota_exceeded',
-          message: m.apiErrors.quotaExceeded(quota.entitlement.plan, quota.entitlement.scansLimit),
-          plan: quota.entitlement.plan,
-          limit: quota.entitlement.scansLimit,
-          scansUsed: quota.entitlement.scansUsed,
-          upgradeUrl: '/pricing',
-          resetAt: quota.entitlement.periodEnd.toISOString(),
-        },
-        { status: 402 }
-      );
-    }
-    const entitlement = quota.entitlement;
 
     // Re-probe network on the server side. The client could have lied about
     // its assessment but it can't lie about its real IP / TLS / headers.
@@ -217,14 +193,6 @@ export async function POST(req: NextRequest) {
         select: { id: true },
       });
 
-      // Per-user retention cap, driven by plan. We delete the oldest rows
-      // above `entitlement.retainCap` so a user can't pile up unbounded data.
-      // Failures here are non-fatal — the user already got their scan saved;
-      // the next insert will retry.
-      pruneOldScansFor(user.id, entitlement.retainCap).catch(err =>
-        logger.warn(`pruneOldScans for ${user.id} failed:`, err)
-      );
-
       return NextResponse.json({ id: scan.id }, { status: 201 });
     } catch (error) {
       // Handle a concurrent-insert race on the idempotency key. If two
@@ -237,22 +205,8 @@ export async function POST(req: NextRequest) {
           select: { id: true },
         });
         if (existing) {
-          // Idempotent hit: we already counted this save on a prior request.
-          // Refund the prededucted slot to avoid double-charging the user.
-          if (entitlement.isPaid) {
-            refundScanQuota(user.id).catch(err =>
-              logger.warn(`quota refund (idempotent) failed for ${user.id}:`, err)
-            );
-          }
           return NextResponse.json({ id: existing.id, idempotent: true }, { status: 200 });
         }
-      }
-      // Real write failure — refund the reserved paid slot so the user can
-      // retry without losing quota.
-      if (entitlement.isPaid) {
-        refundScanQuota(user.id).catch(err =>
-          logger.warn(`quota refund (error) failed for ${user.id}:`, err)
-        );
       }
       logger.warn('saveScan failed:', error);
       return NextResponse.json(
@@ -344,31 +298,4 @@ function clampInt(raw: string | null, fallback: number, max: number): number {
   const n = Number.parseInt(raw, 10);
   if (!Number.isFinite(n) || n <= 0) return fallback;
   return Math.min(n, max);
-}
-
-/**
- * Trim a user's scan history to the most recent `retainCap` rows. The cap is
- * supplied by the entitlement (20 / 100 / 500 for Free / Starter / Pro).
- * Cascade delete on DetectFingerprintHash takes care of dependent rows.
- *
- * Race-safe: rather than SELECT-ids-then-DELETE-not-in-set (which races with
- * concurrent inserts — a scan saved between the two queries would be absent
- * from the survivor set and get deleted), we compute a boundary timestamp
- * from the (retainCap+1)-th newest row and delete strictly older rows. Rows
- * tied with the boundary on createdAt temporarily stay; the next prune
- * catches them.
- */
-async function pruneOldScansFor(userId: string, retainCap: number): Promise<void> {
-  const [boundary] = await prisma.detectScan.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-    skip: retainCap,
-    take: 1,
-    select: { createdAt: true },
-  });
-  if (!boundary) return;
-
-  await prisma.detectScan.deleteMany({
-    where: { userId, createdAt: { lt: boundary.createdAt } },
-  });
 }

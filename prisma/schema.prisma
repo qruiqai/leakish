@@ -62,15 +62,10 @@ model User {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
-  /// Stripe customer id (`cus_…`). Created the first time the user starts a
-  /// Checkout session; reused for portal sessions and recurring billing.
-  stripeCustomerId String?   @unique
-
   accounts      Account[]
   sessions      Session[]
   scans         DetectScan[]
   apiKeys       ApiKey[]
-  subscription  Subscription?
 }
 
 // ----------------------------------------------------------------------------
@@ -172,8 +167,9 @@ model DetectScan {
   fontsetHash    String?
 
   // ---- Tier 2: raw fingerprint payloads for offline analysis ----------------
-  // Kept nullable; each is ~30KB at worst (canvas/webgl data-URLs). With the
-  // 200-scans-per-user cap this bounds a user's blob data to ~20 MB.
+  // Kept nullable; each is ~30KB at worst (canvas/webgl data-URLs). Saves
+  // are unbounded — operators may want to introduce a retention job out of
+  // band if storage becomes a concern.
   rawUserAgent       String? @db.Text
   rawCanvas2dDataUrl String? @db.MediumText
   rawWebglDataUrl    String? @db.MediumText
@@ -237,55 +233,6 @@ model ApiKey {
   /// Covers the active-key cap check (count where userId + revokedAt null)
   /// and the list sort (orderBy revokedAt asc-nulls-first, createdAt desc).
   @@index([userId, revokedAt])
-}
-
-/// Active or recent Stripe subscription bound to a user.
-///
-/// At most one row per user (`userId @unique`). When a subscription is fully
-/// `customer.subscription.deleted` we delete the row, returning the user to Free.
-/// Statuses kept around for non-active paid states (`past_due`, `unpaid`,
-/// `incomplete`) so the entitlement check can decide whether to keep granting
-/// paid access during retries. See `lib/billing/entitlement.ts`.
-model Subscription {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  stripeCustomerId      String
-  stripeSubscriptionId  String   @unique
-  stripePriceId         String
-
-  /// Cached plan id (`'starter' | 'pro'`) derived from `stripePriceId` so we
-  /// can answer entitlement questions without re-fetching from Stripe.
-  plan                  String
-  /// Cached interval (`'month' | 'year'`).
-  interval              String
-  /// Mirrors the Stripe subscription `status` literal (`active`, `trialing`,
-  /// `past_due`, `canceled`, `incomplete`, `unpaid`, …).
-  status                String
-  cancelAtPeriodEnd     Boolean  @default(false)
-
-  currentPeriodStart    DateTime
-  currentPeriodEnd      DateTime
-
-  /// Successful saves consumed in the current billing period.
-  /// Reset to 0 only when `currentPeriodStart` actually advances (see webhook).
-  usageScansThisPeriod  Int      @default(0)
-
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-
-  @@index([stripeCustomerId])
-}
-
-/// Idempotency table for Stripe webhook events. Inserting first inside a
-/// transaction means duplicate deliveries collapse to a unique-constraint
-/// violation we can swallow as a 200 OK. Stripe retries on non-2xx, so this
-/// keeps us safe from repeated effects (double-counted period resets, etc.).
-model StripeEvent {
-  id          String   @id
-  type        String
-  receivedAt  DateTime @default(now())
 }
 
 /// Lookup table for fingerprint uniqueness queries.

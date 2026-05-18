@@ -46,22 +46,6 @@ const ServerEnvSchema = z.object({
   EMAIL_FROM: z.string().optional(),
   /** Mailgun region: `us` (default) or `eu`. */
   MAILGUN_REGION: z.enum(['us', 'eu']).optional(),
-
-  // ---- Stripe (subscriptions) ----
-  // All optional at parse time so dev / unrelated routes don't break when unset.
-  // Routes that need Stripe (checkout / portal / webhook) enforce presence at use site.
-  // Missing Stripe price IDs cause the corresponding plan/interval to be hidden
-  // from the pricing UI rather than throwing.
-  STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
-  STRIPE_PRICE_STARTER_MONTHLY: z.string().optional(),
-  STRIPE_PRICE_STARTER_YEARLY: z.string().optional(),
-  STRIPE_PRICE_PRO_MONTHLY: z.string().optional(),
-  STRIPE_PRICE_PRO_YEARLY: z.string().optional(),
-
-  // Public base URL used to construct Stripe Checkout success/cancel URLs.
-  // Falls back to NEXTAUTH_URL when unset.
-  NEXT_PUBLIC_APP_URL: z.string().url().optional(),
 });
 
 export type ServerEnv = z.infer<typeof ServerEnvSchema>;

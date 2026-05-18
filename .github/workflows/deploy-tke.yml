@@ -234,9 +234,6 @@ jobs:
           kubectl apply -f k8s/dev/service.yaml -n "$NAMESPACE"
           kubectl apply -f k8s/dev/deployment.yaml -n "$NAMESPACE"
           kubectl apply -f k8s/dev/ingress.yaml -n "$NAMESPACE"
-          # Apply the reconcile CronJob too — `set image` below keeps both
-          # the web Deployment and the CronJob locked to the same tag.
-          kubectl apply -f k8s/dev/cron-reconcile-subscriptions.yaml -n "$NAMESPACE"
 
       - name: Roll out web image
         env:
@@ -246,14 +243,6 @@ jobs:
             web=$IMAGE \
             -n "$NAMESPACE"
           kubectl rollout status deployment/leakish-web -n "$NAMESPACE" --timeout=5m
-
-      - name: Sync CronJob image to same tag
-        env:
-          IMAGE: ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image-version }}
-        run: |
-          kubectl set image cronjob/leakish-reconcile-subscriptions \
-            reconcile=$IMAGE \
-            -n "$NAMESPACE"
 
       - name: Health check
         env:

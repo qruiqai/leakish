@@ -15,8 +15,7 @@
     "db:push": "prisma db push --schema=./prisma/schema.prisma",
     "db:push:force": "prisma db push --schema=./prisma/schema.prisma --accept-data-loss",
     "db:studio": "prisma studio --schema=./prisma/schema.prisma",
-    "prisma:generate": "prisma generate --schema=./prisma/schema.prisma",
-    "reconcile-subscriptions": "tsx scripts/reconcile-subscriptions.ts"
+    "prisma:generate": "prisma generate --schema=./prisma/schema.prisma"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.8.0",
@@ -32,10 +31,8 @@
     "next-auth": "^4.24.11",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "stripe": "22.1.1",
     "tailwind-merge": "^3.2.0",
     "tailwindcss-animate": "^1.0.7",
-    "tsx": "^4.20.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

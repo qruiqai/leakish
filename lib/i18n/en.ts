@@ -231,7 +231,6 @@ export const en: ZhMessages = {
   userMenu: {
     history: 'My scan history',
     integrations: 'API integration',
-    billing: 'Billing & plan',
     signOut: 'Sign out',
     signingOut: 'Signing out…',
     unnamed: 'Unnamed',
@@ -266,19 +265,6 @@ export const en: ZhMessages = {
     keyMaxReached: max =>
       `Each user is limited to ${max} active API keys — revoke an unused one first`,
     keyRevokeApiKeyModeBlocked: 'Revoking API keys requires a browser sign-in session',
-    quotaExceeded: (plan, limit) =>
-      `Your ${plan} plan has used all ${limit} saves for this cycle — upgrade or wait for the next cycle`,
-    billingCheckoutFailed: 'Could not start checkout — please try again later',
-    billingPortalFailed: 'Could not open the customer portal — please try again later',
-    billingNotSubscribed: 'You do not have an active subscription yet',
-    billingPlanInvalid: 'That plan is not available — please refresh and try again',
-    billingApiKeyCannotSubscribe:
-      'Subscribing and managing billing require a browser sign-in — API keys cannot use this endpoint',
-    billingWebhookSignatureInvalid: 'Stripe webhook signature verification failed',
-    billingNotConfigured: 'Billing is not configured on this deployment',
-    billingAlreadySubscribed:
-      'You already have an active subscription — switch plans from the customer portal so the change is prorated correctly',
-    billingChangeFailed: 'Could not change your plan — please try again later',
   },
   email: {
     notConfigured:
@@ -1154,7 +1140,6 @@ export const en: ZhMessages = {
       tryNow: 'Run a check',
       signIn: 'Sign in',
       goToApp: 'Open the detector',
-      pricing: 'Pricing',
     },
     hero: {
       eyebrow: 'Privacy health check',
@@ -1263,10 +1248,6 @@ export const en: ZhMessages = {
           q: 'Is the detection logic open?',
           a: 'Every check maps to a publicly documented technique that you can independently verify. If you spot a false positive or missing case, we want to hear about it.',
         },
-        cost: {
-          q: 'Is it free?',
-          a: 'Detection always runs free in your browser. To save scans into a synced history we offer Free / Starter / Pro tiers — see the pricing page.',
-        },
         api: {
           q: 'Can I plug it into automation?',
           a: 'Yes — once signed in you can mint API keys on the Integrations page. Every /api/detect/* endpoint accepts Bearer auth.',
@@ -1288,107 +1269,6 @@ export const en: ZhMessages = {
       legalHeading: 'Resources',
       legalPrivacy: 'Privacy',
       legalTerms: 'Terms',
-      legalPricing: 'Pricing',
     },
-  },
-  pricing: {
-    heading: 'Built for keeping a real scan history',
-    subheading:
-      'Detection always runs free in your browser. Upgrade when you want to save scans into a synced history and compare them over time.',
-    monthly: 'Monthly',
-    yearly: 'Yearly',
-    yearlyBadge: '20% off',
-    currency: 'USD',
-    perMonth: '/ month',
-    perYear: '/ year',
-    yearlyMonthlyEquivalent: n => `≈ $${n} / month`,
-    free: 'Free',
-    plans: {
-      free: {
-        name: 'Free',
-        blurb: 'Try the full detector and keep a short history.',
-        cta: 'Get started',
-      },
-      starter: {
-        name: 'Starter',
-        blurb: 'For one person tracking fingerprint drift over time.',
-        cta: 'Choose Starter',
-      },
-      pro: {
-        name: 'Pro',
-        blurb: 'For CLI / CI workflows that save many scans in bulk.',
-        cta: 'Choose Pro',
-      },
-    },
-    features: {
-      savesPerCycle: n => `${n} saved scans per billing cycle`,
-      retainHistory: n => `Up to ${n} scans retained per account`,
-      analytics: 'Distribution analytics and pairwise comparison',
-      apiAccess: 'API key access (CLI / CI share the same quota)',
-      prioritySupport: 'Priority support and custom advice',
-    },
-    badgeCurrent: 'Current plan',
-    badgeRecommended: 'Popular',
-    ctaSignInRequired: 'Sign in to subscribe',
-    ctaManage: 'Manage subscription',
-    ctaSwitchTo: (planName: string) => `Switch to ${planName}`,
-    unavailable: 'Unavailable',
-    faq: {
-      heading: 'Common questions',
-      cycleReset: {
-        q: 'When does the quota reset?',
-        a: 'Paid users reset at the start of each Stripe billing cycle. Free users reset on the first day of each UTC month.',
-      },
-      alipayWechat: {
-        q: 'Can I pay with Alipay or WeChat Pay?',
-        a: 'Stripe subscriptions only support card / debit-card payments (including Apple Pay, Google Pay and Link). Alipay and WeChat Pay are one-off payment methods on Stripe and cannot be used for recurring billing.',
-      },
-      refund: {
-        q: 'Can I cancel anytime?',
-        a: 'Yes — cancel from the customer portal whenever you like. Your subscription keeps working until the end of the current period and then drops to Free.',
-      },
-      changePlan: {
-        q: 'Can I switch plans?',
-        a: 'Switch in the customer portal. Upgrades take effect immediately and are pro-rated; downgrades apply at the next renewal.',
-      },
-    },
-  },
-  billing: {
-    heading: 'Billing & plan',
-    subtitle: 'See your current plan, usage and payment details.',
-    currentPlanLabel: 'Current plan',
-    statusLabel: 'Status',
-    status: {
-      active: 'Active',
-      trialing: 'Trialing',
-      pastDue: 'Payment retrying',
-      canceled: 'Canceled',
-      incomplete: 'Incomplete',
-      unpaid: 'Unpaid',
-      none: 'No subscription',
-    },
-    intervalMonthly: 'monthly',
-    intervalYearly: 'yearly',
-    usageHeading: 'Usage this cycle',
-    usageLine: (used, limit) => `${used} / ${limit} saves used`,
-    retainHint: n => `Up to ${n} scans retained`,
-    resetAt: when => `Resets ${when}`,
-    manage: 'Manage subscription / invoices',
-    changePlan: 'Change plan',
-    pickPlan: 'Choose a plan',
-    cancelNotice: when => `Will cancel on ${when}`,
-    scheduledChange: (planName: string, when: string) =>
-      `Will switch to ${planName} on ${when}`,
-    cancelScheduledChange: 'Cancel pending change',
-    scheduledChangeCanceled: 'Pending change canceled — your plan stays unchanged.',
-    upgradeApplied: 'Upgrade applied — your new plan is active immediately.',
-    checkoutSuccess: 'Payment received — your subscription is active.',
-    checkoutCancelled: 'Checkout cancelled — pick a plan whenever you are ready.',
-    pastDueBanner:
-      'Your last payment failed. Update your card in the customer portal — your subscription remains usable in the meantime.',
-    notSignedIn: 'Please sign in to view your billing details.',
-    upgradeBanner:
-      'You have used all saves in this cycle — upgrade to keep saving or wait for the next reset.',
-    actionFailed: 'Something went wrong — please try again later.',
   },
 };

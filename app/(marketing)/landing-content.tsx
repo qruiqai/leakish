@@ -6,7 +6,6 @@ import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   Bug,
-  Check,
   ChevronDown,
   Globe,
   Image as ImageIcon,
@@ -22,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import { LocaleToggle } from '@/components/ui/locale-toggle';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { useMessages } from '@/lib/i18n/locale-client';
-import { PLAN_DEFS, PLAN_ORDER, type PlanId } from '@/lib/billing/plans';
 
 export function LandingContent({ signedIn }: { signedIn: boolean }) {
   const m = useMessages();
@@ -42,8 +40,6 @@ export function LandingContent({ signedIn }: { signedIn: boolean }) {
 
       <Faq faq={L.faq} />
 
-      <PricingTeaser pricing={m.pricing} nav={L.nav} />
-
       <FinalCta cta={L.cta} />
 
       <Footer footer={L.footer} appTitle={m.app.title} />
@@ -58,7 +54,7 @@ function Navbar({
   appTitle,
   signedIn,
 }: {
-  nav: { tryNow: string; signIn: string; goToApp: string; pricing: string };
+  nav: { tryNow: string; signIn: string; goToApp: string };
   appTitle: string;
   signedIn: boolean;
 }) {
@@ -73,12 +69,6 @@ function Navbar({
         </Link>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href="/pricing"
-            className="hidden sm:inline-flex text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-1.5 rounded-md"
-          >
-            {nav.pricing}
-          </Link>
           <LocaleToggle />
           <ThemeToggle />
           {signedIn ? (
@@ -498,12 +488,12 @@ function Faq({
     eyebrow: string;
     heading: string;
     items: Record<
-      'privacy' | 'accuracy' | 'login' | 'opensource' | 'cost' | 'api',
+      'privacy' | 'accuracy' | 'login' | 'opensource' | 'api',
       { q: string; a: string }
     >;
   };
 }) {
-  const order = ['privacy', 'accuracy', 'login', 'opensource', 'cost', 'api'] as const;
+  const order = ['privacy', 'accuracy', 'login', 'opensource', 'api'] as const;
   return (
     <section id="faq" className="border-t border-border/60">
       <div className="mx-auto max-w-3xl px-6 py-20">
@@ -541,79 +531,6 @@ function Faq({
   );
 }
 
-type PricingMessages = ReturnType<typeof useMessages>['pricing'];
-
-function PricingTeaser({ pricing, nav }: { pricing: PricingMessages; nav: { pricing: string } }) {
-  return (
-    <section id="pricing" className="border-t border-border/60 bg-muted/20">
-      <div className="mx-auto max-w-5xl px-6 py-20">
-        <div className="mb-10 text-center">
-          <span className="inline-flex items-center rounded-full bg-muted/60 px-3 py-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {nav.pricing}
-          </span>
-          <h2 className="mt-4 text-3xl sm:text-4xl font-semibold tracking-tight">
-            {pricing.heading}
-          </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-base text-muted-foreground leading-relaxed">
-            {pricing.subheading}
-          </p>
-        </div>
-
-        <ul role="list" className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {PLAN_ORDER.map(planId => {
-            const def = PLAN_DEFS[planId];
-            const copy = pricing.plans[planId];
-            return (
-              <li
-                key={planId}
-                className={`rounded-2xl border bg-card p-5 ${
-                  planId === 'starter'
-                    ? 'border-[hsl(var(--cat-network)/0.45)]'
-                    : 'border-border/60'
-                }`}
-              >
-                <h3 className="text-sm font-semibold tracking-tight">{copy.name}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">{copy.blurb}</p>
-                <div className="mt-3 text-xl font-semibold tabular-nums">
-                  {planId === 'free' ? pricing.free : `$${formatPrice(def.monthlyUsd ?? 0)}`}
-                  {planId !== 'free' && (
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">
-                      {pricing.perMonth}
-                    </span>
-                  )}
-                </div>
-                <ul className="mt-4 space-y-1.5 text-xs text-muted-foreground">
-                  <li className="flex items-center gap-1.5">
-                    <Check className="h-3.5 w-3.5 text-[hsl(var(--success))]" aria-hidden="true" />
-                    {pricing.features.savesPerCycle(def.scanQuota)}
-                  </li>
-                  <li className="flex items-center gap-1.5">
-                    <Check className="h-3.5 w-3.5 text-[hsl(var(--success))]" aria-hidden="true" />
-                    {pricing.features.retainHistory(def.retainCap)}
-                  </li>
-                </ul>
-              </li>
-            );
-          })}
-        </ul>
-
-        <div className="mt-8 text-center">
-          <Button asChild variant="outline">
-            <Link href="/pricing">
-              {nav.pricing}
-              <ArrowRight className="ml-1.5 h-4 w-4" aria-hidden="true" />
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function formatPrice(n: number): string {
-  return Number.isInteger(n) ? String(n) : n.toFixed(2);
-}
-
 function FinalCta({ cta }: { cta: { heading: string; subheading: string; button: string } }) {
   return (
     <section className="border-t border-border/60">
@@ -647,7 +564,6 @@ function Footer({
     legalHeading: string;
     legalPrivacy: string;
     legalTerms: string;
-    legalPricing: string;
   };
   appTitle: string;
 }) {
@@ -696,11 +612,6 @@ function Footer({
               {footer.legalHeading}
             </h3>
             <ul role="list" className="mt-3 space-y-2 text-sm">
-              <li>
-                <Link href="/pricing" className="text-foreground hover:text-foreground/80">
-                  {footer.legalPricing}
-                </Link>
-              </li>
               <li>
                 <span className="text-muted-foreground">{footer.legalPrivacy}</span>
               </li>

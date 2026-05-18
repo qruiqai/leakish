@@ -2,10 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ChevronRight, ShieldAlert } from 'lucide-react';
 
-import { UsageMeter, type UsageMeterData } from '@/components/billing/usage-meter';
 import { BackLink } from '@/components/ui/back-link';
 import { getOptionalUser } from '@/lib/api/auth';
-import { getEntitlement } from '@/lib/billing/entitlement';
 import { getLocale } from '@/lib/i18n/locale-server';
 import { getMessages, htmlLang, type Locale, type Messages } from '@/lib/i18n/messages';
 import prisma from '@/lib/prisma';
@@ -46,35 +44,22 @@ export default async function ScansListPage() {
   const m = getMessages(locale);
   const LEVEL_COPY = levelCopy(m);
 
-  const [scans, entitlement] = await Promise.all([
-    prisma.detectScan.findMany({
-      where: { userId: user.id },
-      orderBy: { createdAt: 'desc' },
-      take: 100,
-      select: {
-        id: true,
-        name: true,
-        createdAt: true,
-        score: true,
-        level: true,
-        ipCountry: true,
-        ipCity: true,
-        ipAsn: true,
-        ipIsVpn: true,
-      },
-    }),
-    getEntitlement(user.id),
-  ]);
-
-  const usage: UsageMeterData = {
-    plan: entitlement.plan,
-    status: entitlement.status,
-    scansUsed: entitlement.scansUsed,
-    scansLimit: entitlement.scansLimit,
-    retainCap: entitlement.retainCap,
-    periodEnd: entitlement.periodEnd.toISOString(),
-    isPaid: entitlement.isPaid,
-  };
+  const scans = await prisma.detectScan.findMany({
+    where: { userId: user.id },
+    orderBy: { createdAt: 'desc' },
+    take: 100,
+    select: {
+      id: true,
+      name: true,
+      createdAt: true,
+      score: true,
+      level: true,
+      ipCountry: true,
+      ipCity: true,
+      ipAsn: true,
+      ipIsVpn: true,
+    },
+  });
 
   // Cheap aggregates so we don't need a second query.
   const totalCount = scans.length;
@@ -110,10 +95,6 @@ export default async function ScansListPage() {
             </Link>
           </div>
         )}
-
-        <div className="mb-5">
-          <UsageMeter initial={usage} compact />
-        </div>
 
         {totalCount > 0 && (
           <div className="mb-5 grid grid-cols-2 gap-2 sm:gap-3">
