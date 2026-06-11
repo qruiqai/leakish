@@ -6,14 +6,14 @@
 </p>
 
 <p align="center">
-  <a href="https://verdent.ai"><img alt="Built with Verdent" src="https://img.shields.io/badge/Built%20with-Verdent-7c3aed?style=for-the-badge" /></a>
+  <a href="https://www.verdent.ai/?id=701236"><img alt="Built with Verdent" src="https://img.shields.io/badge/Built%20with-Verdent-7c3aed?style=for-the-badge" /></a>
   <img alt="Next.js 14" src="https://img.shields.io/badge/Next.js-14-000000?style=for-the-badge&logo=next.js" />
   <img alt="React 18" src="https://img.shields.io/badge/React-18-61dafb?style=for-the-badge&logo=react&logoColor=000" />
   <img alt="TypeScript 5" src="https://img.shields.io/badge/TypeScript-5-3178c6?style=for-the-badge&logo=typescript&logoColor=fff" />
   <img alt="Prisma" src="https://img.shields.io/badge/Prisma-6-2D3748?style=for-the-badge&logo=prisma&logoColor=fff" />
 </p>
 
-> **Built with [Verdent](https://verdent.ai)** — an agentic coding assistant.
+> **Built with [Verdent](https://www.verdent.ai/?id=701236)** — an agentic coding assistant.
 > Every detection module, the analytics dashboard, the API-key auth flow, the
 > bilingual UI and the Kubernetes-ready Docker image were designed and
 > implemented in pair-programming sessions driven by Verdent.
@@ -249,7 +249,7 @@ and history retention is unbounded.
 
 ## Acknowledgements
 
-- **[Verdent](https://verdent.ai)** — agentic coding assistant used to build this
+- **[Verdent](https://www.verdent.ai/?id=701236)** — agentic coding assistant used to build this
   project end-to-end.
 - **[NextAuth](https://next-auth.js.org/)** — the auth substrate.
 - **[Prisma](https://www.prisma.io/)** — schema, migrations, generated client.
